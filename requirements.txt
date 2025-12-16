@@ -1,3 +1,5 @@
 selenium
 seleniumbase
 faker
+requests
+undetected-chromedriver

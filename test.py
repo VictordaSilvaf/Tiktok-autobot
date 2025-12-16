@@ -28,16 +28,56 @@ init()
 PROXY_RAW = []
 
 COMMENTS = [
-    "🔥 This is amazing!",
-    "😂 Can't stop laughing!",
-    "👏 Great content!",
-    "💯 So relatable!",
-    "❤️ Love this!",
-    "🙌 Perfect timing!",
-    "😍 Absolutely stunning!",
-    "🤩 Mind blown!",
-    "👌 Quality content!",
-    "🎯 Hit different!"
+    "P-E-R-F-E-I-T-O! Falta só enviar pra quem curtiu no PV 🤭",
+    "Chocadaaa KKKKKKK! Já tô mandando o final pra quem me pediu!",
+    "Mds kkkkkkk! Se curtir, envio completo no PV! Confere lá!",
+    "Plmds KKKKKK to enviando o link no PV! Curte aqui pra eu ver! 🥰",
+    "Não aguentei KKKK! Me chama que eu mando a parte 2! 😉",
+    "Sério? Falta eu enviar pra algm? (CURTE QUE EU MANDO NO PV)",
+    "Tive que mandar esse no PV de umas 5 amigas! KKKK",
+    "Essa é a melhor parte! Me chama pra eu te mandar o resto no DM!",
+    "O link no PV de quem curtir vai a loucura! 😜",
+    "Já mandei no PV de 10 pessoas! Quer que eu te envie também? 🤷‍♀️",
+    "KKKKKKK! Quem curtir e comentar 'EU' eu mando o link!",
+    "Não acredito que acabei de ver isso! Já mandei no PV pra não perder. ✨",
+    "Gente? Onde aperta pra mandar esse vídeo no PV? (Já enviei!) 😅",
+    "Meu Deus, esse tem que ser enviado! Mandando no PV de quem curtir!",
+    "A única coisa que me falta é mandar pra quem me pediu no inbox! 🤫",
+    "Socorro! O PV tá pegando fogo por causa desse vídeo! 🔥",
+    "Juro que mandei pra um monte de gente! Curte que eu envio!",
+    "Tô enviando por DM, mas curte aqui pra eu saber quem é! ❤️",
+    "O restante está no PV, mas não conta pra ninguém! Corre lá!",
+    "Tive que mandar no privado... foi mais forte que eu! KKKK",
+    "Ai, queria mandar pra todo mundo, mas vou mandar só pra quem comentar!",
+    "Meu PV tá explodindo por causa desse vídeo! Já te mandei?",
+    "Quem disser 'eu quero o link' eu mando! (Manda um 'oi' no PV)",
+    "É sério que eu tava guardando o link? Já mandei no PV. Vê lá!",
+    "Curte aqui que eu mando o completo por DM! Tô enviando!",
+    "Já vi 500x e mandei pra quem pediu no PV! Fazendo minha parte.",
+    "Esse vídeo... 🤯 Se quiser, me chama no PV! (Já curtiu?)",
+    "O link completo foi pro PV de quem pediu! Checka lá, gente!",
+    "To sem palavras! Vou mandar o link pra quem curtir meu comentário.",
+    "O que eu faço com o PV cheio de gente pedindo esse link? KKKKK",
+    "AVISO: Mandei o link completo pra umas 30 pessoas no PV! 📩",
+    "Preciso salvar esse vídeo no meu PV. KKKKK! É muito bom!",
+    "Qual o PV de vocês? Curte que eu envio o meu segredo! 👀",
+    "Alguém me explica o que rolou? Vou mandar minha teoria no PV!",
+    "Juro que não ia mandar, mas mandei! Curte que eu envio por DM.",
+    "Pelo amor de Deus, quero mais! Manda o próximo no PV!",
+    "Queria ter essa coragem! Curte que eu mando o vídeo de inspiração no PV!",
+    "Ai que lindo! Tô mandando o link da loja/som no PV pra quem pedir!",
+    "Gente, já me arrependi de ter visto sozinha! Mandei no PV. 😜",
+    "Quase mandei o vídeo pro contato errado! KKKKKK Me chama pra eu mandar certo!",
+    "Vou mandar o tutorial completo pra quem curtir esse comentário.",
+    "O link não tá na bio, mas tá no meu PV! Curte aqui!",
+    "Sério, eu ri tanto que tive que mandar pra todo mundo no PV! 😂",
+    "O que vocês fariam? Eu mandaria no PV! (Mandei!)",
+    "Quem adivinhar a cor do meu batom ganha o link no PV! 💄",
+    "Meu dia foi salvo! Manda um coração no PV que eu te mando algo legal!",
+    "Não sei lidar com essa perfeição! Manda o link no PV, please!",
+    "Já favoritei! Manda o seu PV pra eu te mandar algo especial!",
+    "Meu queixo caiu! Quero o resto no PV! (Curte pra receber!) 💖",
+    "Dá pra curtir 2x? KKKKK Sensacional! (link no PV só curtir)"
 ]
 
 from seleniumbase import BaseCase as SB # Define SB
@@ -63,13 +103,15 @@ def extract_and_save_cookies(sb_driver, cookies_path: Path):
             return False
 
 class TikTokBot:
-    def __init__(self):
+    def __init__(self, comments_to_like: int = 0):
+        # -------- browser / counters --------
         self.setup_driver()
         self.sent_count = 0
         self.like_count = 0
         self.comment_count = 0
         self.save_count = 0
         self.share_count = 0
+        self.comments_to_like = comments_to_like   # NEW
         
         # Preset comments
         self.comments = COMMENTS

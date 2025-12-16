@@ -12,20 +12,35 @@ from tkinter import ttk, messagebox, scrolledtext, filedialog
 from pathlib import Path
 
 # Import our bot functionality
-from test import PROXY_RAW, extract_and_save_cookies, SB, fake
+from test import PROXY_RAW, TikTokBot, extract_and_save_cookies, SB, fake
 from test import COMMENTS
 
 class TikTokBotGUI:
     def __init__(self, root):
         self.root = root
         self.root.title("Bot de Automação TikTok")
-        self.root.geometry("800x600")
-        self.root.minsize(800, 600)
+        self.root.geometry("850x750")
+        self.root.minsize(850, 750)
         
         # Set style
         self.style = ttk.Style()
-        self.style.configure("TButton", padding=6, relief="flat", background="#2a9d8f")
-        self.style.configure("TNotebook", background="#264653")
+        # Tenta usar um tema mais estável (ajuda muito no Windows)
+
+        # Estilo BASE para TODOS os botões. Use um nome diferente para evitar o conflito TButton
+        self.style.configure("Bot.TButton", 
+                            padding=[12, 8], 
+                            font=('Helvetica', 10, 'bold'),
+                            background="#2a9d8f", # Cor de fundo desejada
+                            foreground="black")  # Cor da fonte (forçada a ser preta)
+
+        self.style.map("Bot.TButton",
+                    foreground=[('!disabled', 'black'), 
+                                ('disabled', 'gray')],  # Garante texto preto no estado normal
+                    background=[('active', '#34C759'), # Cor de fundo mais clara ao passar o mouse
+                                ('disabled', '#AAAAAA')])
+
+        # self.style.configure("TButton", padding=[12, 8], font=('Helvetica', 10))
+        self.style.configure("TNotebook")
         self.style.configure("TNotebook.Tab", padding=[12, 8], font=('Helvetica', 10))
         
         # Create notebook (tabs)
@@ -48,7 +63,11 @@ class TikTokBotGUI:
         self.urls = []
         self.comments = []
         self.proxies = PROXY_RAW
-        self.cookies_path = Path(r"C:\Users\Shahzeb\Desktop\Python\tiktok_bot\saved_cookies\cookies.JSON")
+        
+        # self.cookies_path = Path(r"C:\Users\Shahzeb\Desktop\Python\tiktok_bot\saved_cookies\cookies.JSON")
+        base_dir = Path(os.path.dirname(os.path.abspath(__file__))) 
+        self.cookies_path = base_dir / "saved_cookies" / "cookies.JSON"
+        
         self.running = False
         self.thread = None
         
@@ -78,8 +97,8 @@ class TikTokBotGUI:
         url_btn_frame = ttk.Frame(url_frame)
         url_btn_frame.pack(fill=tk.X, pady=5)
         
-        ttk.Button(url_btn_frame, text="Carregar URLs do Arquivo", command=self.load_urls).pack(side=tk.LEFT, padx=5)
-        ttk.Button(url_btn_frame, text="Limpar URLs", command=self.clear_urls).pack(side=tk.LEFT, padx=5)
+        ttk.Button(url_btn_frame, text="Carregar URLs do Arquivo", command=self.load_urls, style="Bot.TButton").pack(side=tk.LEFT, padx=5)
+        ttk.Button(url_btn_frame, text="Limpar URLs", command=self.clear_urls, style="Bot.TButton").pack(side=tk.LEFT, padx=5)
         
         # Status frame
         status_frame = ttk.LabelFrame(frame, text="Status", padding="10")
@@ -88,15 +107,17 @@ class TikTokBotGUI:
         self.status_text = scrolledtext.ScrolledText(status_frame, height=8)
         self.status_text.pack(fill=tk.BOTH, expand=True, pady=5)
         self.status_text.config(state=tk.DISABLED)
-        
+        self.status_text.tag_config('timestamp_color', foreground='#1E90FF') # Azul Escuro (Deep Sky Blue)
+        self.status_text.tag_config('default_log', foreground='black') # Cor padrão para o resto do texto
+    
         # Control buttons
         control_frame = ttk.Frame(frame)
-        control_frame.pack(fill=tk.X, pady=10)
+        control_frame.pack(fill=tk.X)
         
-        self.start_btn = ttk.Button(control_frame, text="Iniciar Bot", command=self.start_bot)
+        self.start_btn = ttk.Button(control_frame, text="Iniciar Bot", command=self.start_bot, style="Bot.TButton")
         self.start_btn.pack(side=tk.LEFT, padx=5)
         
-        self.stop_btn = ttk.Button(control_frame, text="Parar Bot", command=self.stop_bot, state=tk.DISABLED)
+        self.stop_btn = ttk.Button(control_frame, text="Parar Bot", command=self.stop_bot, state=tk.DISABLED, style="Bot.TButton")
         self.stop_btn.pack(side=tk.LEFT, padx=5)
         
         # Progress information
@@ -218,17 +239,24 @@ class TikTokBotGUI:
         
     # ============== Action Methods ==============
     
+    # No bot_controller.py, mude sua função log:
+
     def log(self, message):
-        """Adiciona mensagem ao log de status com timestamp."""
+        """Adiciona mensagem ao log de status com timestamp em azul."""
         
-        # Captura a hora atual (ex: [14:01:44])
-        timestamp = datetime.datetime.now().strftime("[%H:%M:%S]")
-        
-        # Formata a mensagem completa
-        formatted_message = f"{timestamp} {message}\n"
+        timestamp = datetime.datetime.now().strftime("[%H:%M:%S]") 
         
         self.status_text.config(state=tk.NORMAL)
-        self.status_text.insert(tk.END, formatted_message) # Insere a nova mensagem formatada
+        
+        # 1. Insere o Timestamp e aplica a tag 'timestamp_color'
+        self.status_text.insert(tk.END, timestamp, 'timestamp_color')
+        
+        # 2. Insere um espaço (sem cor especial)
+        self.status_text.insert(tk.END, " ")
+        
+        # 3. Insere a mensagem principal (com a cor padrão, se desejar)
+        self.status_text.insert(tk.END, f"{message}\n", 'default_log') # Adiciona a cor padrão ao corpo da mensagem
+        
         self.status_text.see(tk.END)
         self.status_text.config(state=tk.DISABLED)
         self.root.update_idletasks()
@@ -594,15 +622,39 @@ class TikTokBotGUI:
     
     def bot_thread(self, urls):
         """Execute bot in separate thread"""
+        
+        # ----------------------------------------------------
+        # ATENÇÃO: A CLASSE TikTokBot DEVE SER IMPORTADA NO TOPO 
+        # (Linha 14, por exemplo) do bot_controller.py
+        # from test import TikTokBot 
+        # ----------------------------------------------------
+        
+        # 1. Cria a instância do bot FORA do bloco try/except principal
+        try:
+            # Pega as configurações de comentários da GUI (se a GUI tiver o campo)
+            # Assumindo 0 como padrão se não houver campo na GUI
+            comments_to_like_count = 0 
+            
+            # Cria a instância do bot.
+            # Ele vai configurar o driver e carregar as listas iniciais.
+            bot_instance = TikTokBot(comments_to_like=comments_to_like_count) 
+            
+        except Exception as e:
+            self.log(f"❌ Erro na inicialização do Bot: {e}")
+            self.root.after(0, lambda: self.handle_error(str(e)))
+            return # Encerra a thread se a inicialização falhar
+
+        # 2. Inicia o processamento em lotes
         try:
             remaining = urls[:]
             processed = 0
             
-            # Import necessary functions
-            from test import run_all
-            
-            # Process URLs in batches to allow stopping
+            # O batc_size deve ser calculado em start_bot, mas mantemos aqui por consistência
             batch_size = min(5, len(urls))
+            
+            # Garante que o bot utilize os comentários e proxies da GUI (se necessário)
+            # Este é o lugar onde você atualizaria as propriedades internas do bot_instance
+            # bot_instance.comments = [seus_comentários_da_gui] 
             
             while remaining and self.running:
                 batch = remaining[:batch_size]
@@ -611,9 +663,15 @@ class TikTokBotGUI:
                 self.log(f"Processando lote de {len(batch)} URLs...")
                 
                 try:
-                    run_all(batch)
+                    # CORREÇÃO CRÍTICA: Chama o método run_bot da instância do bot
+                    # run_bot espera uma lista de URLs. 
+                    # O run_bot do seu código fecha o driver ao final da lista!
+                    
+                    # Chamando o método run_bot do seu test.py
+                    bot_instance.run_bot(batch, str(self.cookies_path))
+                    
                 except Exception as e:
-                    self.log(f"Erro durante a execução: {e}")
+                    self.log(f"Erro durante a execução do lote: {e}")
                 
                 # Update progress
                 processed += len(batch)
@@ -631,7 +689,7 @@ class TikTokBotGUI:
             if not remaining and self.running:
                 self.log("✅ Bot concluiu o processamento de todas as URLs")
                 self.root.after(0, self.bot_finished)
-            
+                
         except Exception as e:
             self.log(f"❌ Erro fatal: {e}")
             self.root.after(0, lambda: self.handle_error(str(e)))

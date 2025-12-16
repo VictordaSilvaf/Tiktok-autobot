@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
-# bot_controller.py - TikTok Automation Bot Controller
+# bot_controller.py - Controlador do Bot de Automação TikTok
 
+import datetime
 import sys
 import json
 import os
@@ -11,12 +12,13 @@ from tkinter import ttk, messagebox, scrolledtext, filedialog
 from pathlib import Path
 
 # Import our bot functionality
-from test import run_all, PROXY_RAW, load_cookies, extract_and_save_cookies, SB, fake
+from test import PROXY_RAW, extract_and_save_cookies, SB, fake
+from test import COMMENTS
 
 class TikTokBotGUI:
     def __init__(self, root):
         self.root = root
-        self.root.title("TikTok Automation Bot")
+        self.root.title("Bot de Automação TikTok")
         self.root.geometry("800x600")
         self.root.minsize(800, 600)
         
@@ -37,10 +39,10 @@ class TikTokBotGUI:
         self.tab_comments = ttk.Frame(self.notebook)
         
         # Add frames to notebook
-        self.notebook.add(self.tab_main, text="Main")
-        self.notebook.add(self.tab_settings, text="Settings")
+        self.notebook.add(self.tab_main, text="Principal")
+        self.notebook.add(self.tab_settings, text="Configurações")
         self.notebook.add(self.tab_proxy, text="Proxies")
-        self.notebook.add(self.tab_comments, text="Comments")
+        self.notebook.add(self.tab_comments, text="Comentários")
         
         # Variables
         self.urls = []
@@ -65,7 +67,7 @@ class TikTokBotGUI:
         frame.pack(fill=tk.BOTH, expand=True)
         
         # URL input section
-        url_frame = ttk.LabelFrame(frame, text="Video URLs", padding="10")
+        url_frame = ttk.LabelFrame(frame, text="URLs dos Vídeos", padding="10")
         url_frame.pack(fill=tk.BOTH, expand=True, pady=10)
         
         # Text widget for URLs
@@ -76,8 +78,8 @@ class TikTokBotGUI:
         url_btn_frame = ttk.Frame(url_frame)
         url_btn_frame.pack(fill=tk.X, pady=5)
         
-        ttk.Button(url_btn_frame, text="Load URLs from File", command=self.load_urls).pack(side=tk.LEFT, padx=5)
-        ttk.Button(url_btn_frame, text="Clear URLs", command=self.clear_urls).pack(side=tk.LEFT, padx=5)
+        ttk.Button(url_btn_frame, text="Carregar URLs do Arquivo", command=self.load_urls).pack(side=tk.LEFT, padx=5)
+        ttk.Button(url_btn_frame, text="Limpar URLs", command=self.clear_urls).pack(side=tk.LEFT, padx=5)
         
         # Status frame
         status_frame = ttk.LabelFrame(frame, text="Status", padding="10")
@@ -91,14 +93,14 @@ class TikTokBotGUI:
         control_frame = ttk.Frame(frame)
         control_frame.pack(fill=tk.X, pady=10)
         
-        self.start_btn = ttk.Button(control_frame, text="Start Bot", command=self.start_bot)
+        self.start_btn = ttk.Button(control_frame, text="Iniciar Bot", command=self.start_bot)
         self.start_btn.pack(side=tk.LEFT, padx=5)
         
-        self.stop_btn = ttk.Button(control_frame, text="Stop Bot", command=self.stop_bot, state=tk.DISABLED)
+        self.stop_btn = ttk.Button(control_frame, text="Parar Bot", command=self.stop_bot, state=tk.DISABLED)
         self.stop_btn.pack(side=tk.LEFT, padx=5)
         
         # Progress information
-        self.progress_var = tk.StringVar(value="Ready")
+        self.progress_var = tk.StringVar(value="Pronto")
         self.progress_frame = ttk.Frame(frame)
         self.progress_frame.pack(fill=tk.X, pady=5)
         
@@ -114,52 +116,52 @@ class TikTokBotGUI:
         frame.pack(fill=tk.BOTH, expand=True)
         
         # Cookies section
-        cookie_frame = ttk.LabelFrame(frame, text="Cookie Management", padding="10")
+        cookie_frame = ttk.LabelFrame(frame, text="Gerenciamento de Cookies", padding="10")
         cookie_frame.pack(fill=tk.X, pady=10)
         
-        ttk.Label(cookie_frame, text="Cookie File:").grid(row=0, column=0, sticky=tk.W, pady=5)
+        ttk.Label(cookie_frame, text="Arquivo de Cookie:").grid(row=0, column=0, sticky=tk.W, pady=5)
         
         cookie_path_frame = ttk.Frame(cookie_frame)
         cookie_path_frame.grid(row=0, column=1, sticky=tk.W, pady=5)
         
         self.cookie_path_var = tk.StringVar(value=str(self.cookies_path))
         ttk.Entry(cookie_path_frame, textvariable=self.cookie_path_var, width=40).pack(side=tk.LEFT, padx=5)
-        ttk.Button(cookie_path_frame, text="Browse", command=self.browse_cookie_file).pack(side=tk.LEFT, padx=5)
+        ttk.Button(cookie_path_frame, text="Procurar", command=self.browse_cookie_file).pack(side=tk.LEFT, padx=5)
         
-        ttk.Button(cookie_frame, text="Extract New Cookies", command=self.extract_cookies).grid(row=1, column=0, pady=10)
-        ttk.Button(cookie_frame, text="Fix Cookie Format", command=self.fix_cookies).grid(row=1, column=1, pady=10)
+        ttk.Button(cookie_frame, text="Extrair Novos Cookies", command=self.extract_cookies).grid(row=1, column=0, pady=10)
+        ttk.Button(cookie_frame, text="Corrigir Formato de Cookie", command=self.fix_cookies).grid(row=1, column=1, pady=10)
         
         # Delay settings
-        delay_frame = ttk.LabelFrame(frame, text="Timing Settings", padding="10")
+        delay_frame = ttk.LabelFrame(frame, text="Configurações de Tempo", padding="10")
         delay_frame.pack(fill=tk.X, pady=10)
         
-        ttk.Label(delay_frame, text="Min Delay (seconds):").grid(row=0, column=0, sticky=tk.W, pady=5)
+        ttk.Label(delay_frame, text="Atraso Mínimo (segundos):").grid(row=0, column=0, sticky=tk.W, pady=5)
         self.min_delay_var = tk.DoubleVar(value=2.0)
         ttk.Spinbox(delay_frame, from_=0.5, to=10.0, increment=0.5, textvariable=self.min_delay_var, width=5).grid(row=0, column=1, sticky=tk.W, pady=5)
         
-        ttk.Label(delay_frame, text="Max Delay (seconds):").grid(row=1, column=0, sticky=tk.W, pady=5)
+        ttk.Label(delay_frame, text="Atraso Máximo (segundos):").grid(row=1, column=0, sticky=tk.W, pady=5)
         self.max_delay_var = tk.DoubleVar(value=4.0)
         ttk.Spinbox(delay_frame, from_=1.0, to=15.0, increment=0.5, textvariable=self.max_delay_var, width=5).grid(row=1, column=1, sticky=tk.W, pady=5)
         
         # Operation settings
-        op_frame = ttk.LabelFrame(frame, text="Operation Settings", padding="10")
+        op_frame = ttk.LabelFrame(frame, text="Configurações de Operação", padding="10")
         op_frame.pack(fill=tk.X, pady=10)
         
         # Checkboxes for actions
         self.like_var = tk.BooleanVar(value=True)
-        ttk.Checkbutton(op_frame, text="Like Videos", variable=self.like_var).grid(row=0, column=0, sticky=tk.W, pady=5)
+        ttk.Checkbutton(op_frame, text="Curtir Vídeos", variable=self.like_var).grid(row=0, column=0, sticky=tk.W, pady=5)
         
         self.comment_var = tk.BooleanVar(value=True)
-        ttk.Checkbutton(op_frame, text="Post Comments", variable=self.comment_var).grid(row=0, column=1, sticky=tk.W, pady=5)
+        ttk.Checkbutton(op_frame, text="Postar Comentários", variable=self.comment_var).grid(row=0, column=1, sticky=tk.W, pady=5)
         
         self.share_var = tk.BooleanVar(value=True)
-        ttk.Checkbutton(op_frame, text="Share Videos", variable=self.share_var).grid(row=1, column=0, sticky=tk.W, pady=5)
+        ttk.Checkbutton(op_frame, text="Compartilhar Vídeos", variable=self.share_var).grid(row=1, column=0, sticky=tk.W, pady=5)
         
         self.save_var = tk.BooleanVar(value=True)
-        ttk.Checkbutton(op_frame, text="Save Videos", variable=self.save_var).grid(row=1, column=1, sticky=tk.W, pady=5)
+        ttk.Checkbutton(op_frame, text="Salvar Vídeos", variable=self.save_var).grid(row=1, column=1, sticky=tk.W, pady=5)
         
         # Save button
-        ttk.Button(frame, text="Save Settings", command=self.save_settings).pack(pady=10)
+        ttk.Button(frame, text="Salvar Configurações", command=self.save_settings).pack(pady=10)
         
     def init_proxy_tab(self):
         """Setup the proxy tab"""
@@ -167,7 +169,7 @@ class TikTokBotGUI:
         frame.pack(fill=tk.BOTH, expand=True)
         
         # Proxy list
-        proxy_frame = ttk.LabelFrame(frame, text="Proxy List", padding="10")
+        proxy_frame = ttk.LabelFrame(frame, text="Lista de Proxies", padding="10")
         proxy_frame.pack(fill=tk.BOTH, expand=True, pady=10)
         
         # Text widget for proxies
@@ -181,12 +183,12 @@ class TikTokBotGUI:
         btn_frame = ttk.Frame(proxy_frame)
         btn_frame.pack(fill=tk.X, pady=5)
         
-        ttk.Button(btn_frame, text="Add Proxy", command=self.add_proxy).pack(side=tk.LEFT, padx=5)
-        ttk.Button(btn_frame, text="Remove Selected", command=self.remove_proxy).pack(side=tk.LEFT, padx=5)
-        ttk.Button(btn_frame, text="Test Proxies", command=self.test_proxies).pack(side=tk.LEFT, padx=5)
+        ttk.Button(btn_frame, text="Adicionar Proxy", command=self.add_proxy).pack(side=tk.LEFT, padx=5)
+        ttk.Button(btn_frame, text="Remover Selecionado", command=self.remove_proxy).pack(side=tk.LEFT, padx=5)
+        ttk.Button(btn_frame, text="Testar Proxies", command=self.test_proxies).pack(side=tk.LEFT, padx=5)
         
         # Format description
-        ttk.Label(frame, text="Format: IP,PORT,USERNAME,PASSWORD - one proxy per line").pack(pady=5)
+        ttk.Label(frame, text="Formato: IP,PORTA,USUÁRIO,SENHA - um proxy por linha").pack(pady=5)
         
     def init_comments_tab(self):
         """Setup the comments tab"""
@@ -194,7 +196,7 @@ class TikTokBotGUI:
         frame.pack(fill=tk.BOTH, expand=True)
         
         # Comments list
-        comments_frame = ttk.LabelFrame(frame, text="Comment Templates", padding="10")
+        comments_frame = ttk.LabelFrame(frame, text="Modelos de Comentários", padding="10")
         comments_frame.pack(fill=tk.BOTH, expand=True, pady=10)
         
         # Text widget for comments
@@ -209,17 +211,24 @@ class TikTokBotGUI:
         btn_frame = ttk.Frame(comments_frame)
         btn_frame.pack(fill=tk.X, pady=5)
         
-        ttk.Button(btn_frame, text="Add Comment", command=self.add_comment).pack(side=tk.LEFT, padx=5)
-        ttk.Button(btn_frame, text="Remove Selected", command=self.remove_comment).pack(side=tk.LEFT, padx=5)
-        ttk.Button(btn_frame, text="Load from File", command=self.load_comments).pack(side=tk.LEFT, padx=5)
-        ttk.Button(btn_frame, text="Save to File", command=self.save_comments).pack(side=tk.LEFT, padx=5)
+        ttk.Button(btn_frame, text="Adicionar Comentário", command=self.add_comment).pack(side=tk.LEFT, padx=5)
+        ttk.Button(btn_frame, text="Remover Selecionado", command=self.remove_comment).pack(side=tk.LEFT, padx=5)
+        ttk.Button(btn_frame, text="Carregar do Arquivo", command=self.load_comments).pack(side=tk.LEFT, padx=5)
+        ttk.Button(btn_frame, text="Salvar no Arquivo", command=self.save_comments).pack(side=tk.LEFT, padx=5)
         
     # ============== Action Methods ==============
     
     def log(self, message):
-        """Add message to status log"""
+        """Adiciona mensagem ao log de status com timestamp."""
+        
+        # Captura a hora atual (ex: [14:01:44])
+        timestamp = datetime.datetime.now().strftime("[%H:%M:%S]")
+        
+        # Formata a mensagem completa
+        formatted_message = f"{timestamp} {message}\n"
+        
         self.status_text.config(state=tk.NORMAL)
-        self.status_text.insert(tk.END, f"{message}\n")
+        self.status_text.insert(tk.END, formatted_message) # Insere a nova mensagem formatada
         self.status_text.see(tk.END)
         self.status_text.config(state=tk.DISABLED)
         self.root.update_idletasks()
@@ -227,8 +236,8 @@ class TikTokBotGUI:
     def browse_cookie_file(self):
         """Open file dialog to select cookie file"""
         filepath = filedialog.askopenfilename(
-            title="Select Cookie File",
-            filetypes=[("JSON Files", "*.json"), ("All Files", "*.*")]
+            title="Selecionar Arquivo de Cookie",
+            filetypes=[("Arquivos JSON", "*.json"), ("Todos os Arquivos", "*.*")]
         )
         if filepath:
             self.cookie_path_var.set(filepath)
@@ -237,18 +246,18 @@ class TikTokBotGUI:
     def load_urls(self):
         """Load URLs from a file"""
         filepath = filedialog.askopenfilename(
-            title="Select URL List",
-            filetypes=[("Text Files", "*.txt"), ("All Files", "*.*")]
+            title="Selecionar Lista de URLs",
+            filetypes=[("Arquivos de Texto", "*.txt"), ("Todos os Arquivos", "*.*")]
         )
         if filepath:
             try:
-                with open(filepath, 'r') as file:
+                with open(filepath, 'r', encoding='utf-8') as file:
                     urls = [line.strip() for line in file if line.strip()]
                     self.url_text.delete(1.0, tk.END)
                     self.url_text.insert(tk.END, "\n".join(urls))
-                self.log(f"Loaded {len(urls)} URLs from file")
+                self.log(f"{len(urls)} URLs carregadas do arquivo")
             except Exception as e:
-                messagebox.showerror("Error", f"Failed to load URLs: {e}")
+                messagebox.showerror("Erro", f"Falha ao carregar URLs: {e}")
     
     def clear_urls(self):
         """Clear all URLs from the text box"""
@@ -258,7 +267,7 @@ class TikTokBotGUI:
         """Extract cookies from TikTok in a new browser session"""
         def extract_thread():
             try:
-                self.log("Opening browser to extract cookies...")
+                self.log("Abrindo navegador para extrair cookies...")
                 with SB(
                     uc=True,
                     incognito=False,
@@ -266,8 +275,8 @@ class TikTokBotGUI:
                     headless=False,
                 ) as sb:
                     sb.open("https://www.tiktok.com/login")
-                    self.log("Please log in to TikTok manually...")
-                    self.log("Window will auto-close after successful login")
+                    self.log("Faça login no TikTok manualmente...")
+                    self.log("A janela se fechará automaticamente após login bem-sucedido")
                     
                     # Wait for manual login
                     max_wait = 120  # 2 minutes
@@ -283,17 +292,17 @@ class TikTokBotGUI:
                         time.sleep(3)
                     
                     if logged_in:
-                        self.log("Login detected! Extracting cookies...")
+                        self.log("Login detectado! Extraindo cookies...")
                         success = extract_and_save_cookies(sb, self.cookies_path)
                         if success:
-                            self.log(f"✅ Cookies saved to {self.cookies_path}")
+                            self.log(f"✅ Cookies salvos em {self.cookies_path}")
                         else:
-                            self.log("❌ Failed to save cookies")
+                            self.log("❌ Falha ao salvar cookies")
                     else:
-                        self.log("⚠️ Login timed out or was not detected")
+                        self.log("⚠️ Tempo limite de login excedido ou login não detectado")
             
             except Exception as e:
-                self.log(f"❌ Error extracting cookies: {e}")
+                self.log(f"❌ Erro ao extrair cookies: {e}")
         
         # Run in thread to prevent UI freeze
         thread = threading.Thread(target=extract_thread)
@@ -304,14 +313,14 @@ class TikTokBotGUI:
         """Fix cookie format issues"""
         try:
             if not self.cookies_path.exists():
-                messagebox.showerror("Error", f"Cookie file not found: {self.cookies_path}")
+                messagebox.showerror("Erro", f"Arquivo de cookie não encontrado: {self.cookies_path}")
                 return
                 
             with open(self.cookies_path, 'r', encoding='utf-8') as f:
                 try:
                     cookies = json.load(f)
                 except json.JSONDecodeError:
-                    messagebox.showerror("Error", "Invalid JSON in cookie file")
+                    messagebox.showerror("Erro", "JSON inválido no arquivo de cookie")
                     return
             
             # Fix cookies
@@ -343,18 +352,18 @@ class TikTokBotGUI:
             with open(self.cookies_path, 'w', encoding='utf-8') as f:
                 json.dump(fixed_cookies, f, indent=2)
             
-            self.log(f"✅ Fixed {len(fixed_cookies)} cookies")
-            self.log(f"Original file backed up to: {backup_path}")
+            self.log(f"✅ {len(fixed_cookies)} cookies corrigidos")
+            self.log(f"Arquivo original salvo em: {backup_path}")
             
-            messagebox.showinfo("Success", f"Fixed {len(fixed_cookies)} cookies")
+            messagebox.showinfo("Sucesso", f"{len(fixed_cookies)} cookies corrigidos")
         
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to fix cookies: {e}")
+            messagebox.showerror("Erro", f"Falha ao corrigir cookies: {e}")
     
     def add_proxy(self):
         """Add a new proxy to the list"""
         from tkinter.simpledialog import askstring
-        proxy = askstring("Add Proxy", "Enter proxy in format: IP,PORT,USERNAME,PASSWORD")
+        proxy = askstring("Adicionar Proxy", "Digite o proxy no formato: IP,PORTA,USUÁRIO,SENHA")
         if proxy:
             self.proxy_text.insert(tk.END, f"\n{proxy}")
     
@@ -368,13 +377,13 @@ class TikTokBotGUI:
                 self.proxy_text.delete(1.0, tk.END)
                 self.proxy_text.insert(tk.END, new_content)
         except tk.TclError:
-            messagebox.showinfo("Info", "No text selected")
+            messagebox.showinfo("Informação", "Nenhum texto selecionado")
     
     def test_proxies(self):
         """Test if proxies are working"""
         def test_thread():
             proxies = self.proxy_text.get(1.0, tk.END).strip().split('\n')
-            self.log(f"Testing {len(proxies)} proxies...")
+            self.log(f"Testando {len(proxies)} proxies...")
             
             for i, proxy_str in enumerate(proxies):
                 if not proxy_str.strip():
@@ -383,13 +392,13 @@ class TikTokBotGUI:
                 try:
                     parts = proxy_str.split(',')
                     if len(parts) != 4:
-                        self.log(f"⚠️ Invalid format: {proxy_str}")
+                        self.log(f"⚠️ Formato inválido: {proxy_str}")
                         continue
                         
                     host, port, user, pwd = parts
                     proxy = f"{user}:{pwd}@{host}:{port}"
                     
-                    self.log(f"Testing proxy {i+1}/{len(proxies)}: {host}")
+                    self.log(f"Testando proxy {i+1}/{len(proxies)}: {host}")
                     
                     # Test with a quick browser session
                     with SB(
@@ -402,10 +411,10 @@ class TikTokBotGUI:
                     ) as sb:
                         sb.open("https://api.ipify.org")
                         ip = sb.get_text("body")
-                        self.log(f"✅ Proxy {host} working: {ip}")
+                        self.log(f"✅ Proxy {host} funcionando: {ip}")
                 
                 except Exception as e:
-                    self.log(f"❌ Proxy {proxy_str} failed: {e}")
+                    self.log(f"❌ Proxy {proxy_str} falhou: {e}")
         
         # Run in thread to prevent UI freeze
         thread = threading.Thread(target=test_thread)
@@ -415,7 +424,7 @@ class TikTokBotGUI:
     def add_comment(self):
         """Add a new comment template"""
         from tkinter.simpledialog import askstring
-        comment = askstring("Add Comment", "Enter comment template:")
+        comment = askstring("Adicionar Comentário", "Digite o modelo de comentário:")
         if comment:
             self.comments_text.insert(tk.END, f"\n{comment}")
     
@@ -429,13 +438,13 @@ class TikTokBotGUI:
                 self.comments_text.delete(1.0, tk.END)
                 self.comments_text.insert(tk.END, new_content)
         except tk.TclError:
-            messagebox.showinfo("Info", "No text selected")
+            messagebox.showinfo("Informação", "Nenhum texto selecionado")
     
     def load_comments(self):
         """Load comments from a file"""
         filepath = filedialog.askopenfilename(
-            title="Select Comments File",
-            filetypes=[("Text Files", "*.txt"), ("All Files", "*.*")]
+            title="Selecionar Arquivo de Comentários",
+            filetypes=[("Arquivos de Texto", "*.txt"), ("Todos os Arquivos", "*.*")]
         )
         if filepath:
             try:
@@ -443,25 +452,25 @@ class TikTokBotGUI:
                     comments = file.read()
                     self.comments_text.delete(1.0, tk.END)
                     self.comments_text.insert(tk.END, comments)
-                self.log(f"Loaded comments from file")
+                self.log(f"Comentários carregados do arquivo")
             except Exception as e:
-                messagebox.showerror("Error", f"Failed to load comments: {e}")
+                messagebox.showerror("Erro", f"Falha ao carregar comentários: {e}")
     
     def save_comments(self):
         """Save comments to a file"""
         filepath = filedialog.asksaveasfilename(
-            title="Save Comments",
+            title="Salvar Comentários",
             defaultextension=".txt",
-            filetypes=[("Text Files", "*.txt"), ("All Files", "*.*")]
+            filetypes=[("Arquivos de Texto", "*.txt"), ("Todos os Arquivos", "*.*")]
         )
         if filepath:
             try:
                 with open(filepath, 'w', encoding='utf-8') as file:
                     comments = self.comments_text.get(1.0, tk.END)
                     file.write(comments)
-                self.log(f"Comments saved to {filepath}")
+                self.log(f"Comentários salvos em {filepath}")
             except Exception as e:
-                messagebox.showerror("Error", f"Failed to save comments: {e}")
+                messagebox.showerror("Erro", f"Falha ao salvar comentários: {e}")
     
     def save_settings(self):
         """Save current settings to a file"""
@@ -481,9 +490,9 @@ class TikTokBotGUI:
             with open("bot_settings.json", 'w', encoding='utf-8') as f:
                 json.dump(settings, f, indent=2)
                 
-            messagebox.showinfo("Success", "Settings saved successfully")
+            messagebox.showinfo("Sucesso", "Configurações salvas com sucesso")
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to save settings: {e}")
+            messagebox.showerror("Erro", f"Falha ao salvar configurações: {e}")
     
     def load_settings(self):
         """Load settings from file"""
@@ -526,27 +535,27 @@ class TikTokBotGUI:
                 self.comments_text.delete(1.0, tk.END)
                 self.comments_text.insert(tk.END, "\n".join(self.comments))
                 
-            self.log("Settings loaded successfully")
+            self.log("Configurações carregadas com sucesso")
         except Exception as e:
-            self.log(f"Failed to load settings: {e}")
+            self.log(f"Falha ao carregar configurações: {e}")
     
     def start_bot(self):
         """Start the bot process"""
         # Get URLs
         urls = [url.strip() for url in self.url_text.get(1.0, tk.END).split('\n') if url.strip()]
         if not urls:
-            messagebox.showerror("Error", "No URLs provided")
+            messagebox.showerror("Erro", "Nenhuma URL fornecida")
             return
         
         # Get comments
         comments = [c.strip() for c in self.comments_text.get(1.0, tk.END).split('\n') if c.strip()]
         if not comments:
-            messagebox.showwarning("Warning", "No comments provided. Bot will continue without commenting.")
+            messagebox.showwarning("Aviso", "Nenhum comentário fornecido. O bot continuará sem comentar.")
         
         # Get proxies
         proxies = [p.strip() for p in self.proxy_text.get(1.0, tk.END).split('\n') if p.strip()]
         if not proxies:
-            if not messagebox.askyesno("Warning", "No proxies specified. Run without proxies?"):
+            if not messagebox.askyesno("Aviso", "Nenhum proxy especificado. Executar sem proxies?"):
                 return
         
         # Update global variables in test.py
@@ -567,16 +576,16 @@ class TikTokBotGUI:
         self.stop_btn.config(state=tk.NORMAL)
         
         # Set progress variables
-        self.progress_var.set("Running")
+        self.progress_var.set("Executando")
         self.progress["maximum"] = len(urls)
         self.progress["value"] = 0
         
         self.running = True
         
         # Log start
-        self.log(f"Starting bot with {len(urls)} URLs")
-        self.log(f"Using {len(proxies)} proxies")
-        self.log(f"Using delay range: {test.DELAY[0]}-{test.DELAY[1]} seconds")
+        self.log(f"Iniciando bot com {len(urls)} URLs")
+        self.log(f"Usando {len(proxies)} proxies")
+        self.log(f"Usando intervalo de atraso: {test.DELAY[0]}-{test.DELAY[1]} segundos")
         
         # Run in separate thread
         self.thread = threading.Thread(target=self.bot_thread, args=(urls,))
@@ -599,12 +608,12 @@ class TikTokBotGUI:
                 batch = remaining[:batch_size]
                 
                 # Log current batch
-                self.log(f"Processing batch of {len(batch)} URLs...")
+                self.log(f"Processando lote de {len(batch)} URLs...")
                 
                 try:
                     run_all(batch)
                 except Exception as e:
-                    self.log(f"Error during execution: {e}")
+                    self.log(f"Erro durante a execução: {e}")
                 
                 # Update progress
                 processed += len(batch)
@@ -615,43 +624,43 @@ class TikTokBotGUI:
                 
                 # Check if we should continue
                 if not self.running:
-                    self.log("Bot stopped by user")
+                    self.log("Bot parado pelo usuário")
                     break
             
             # Completed all URLs
             if not remaining and self.running:
-                self.log("✅ Bot completed processing all URLs")
+                self.log("✅ Bot concluiu o processamento de todas as URLs")
                 self.root.after(0, self.bot_finished)
             
         except Exception as e:
-            self.log(f"❌ Fatal error: {e}")
+            self.log(f"❌ Erro fatal: {e}")
             self.root.after(0, lambda: self.handle_error(str(e)))
     
     def update_progress(self, processed, total):
         """Update progress UI elements"""
         self.progress["value"] = processed
-        self.progress_var.set(f"Processed: {processed}/{total}")
+        self.progress_var.set(f"Processados: {processed}/{total}")
     
     def bot_finished(self):
         """Handle bot completion"""
         self.running = False
         self.start_btn.config(state=tk.NORMAL)
         self.stop_btn.config(state=tk.DISABLED)
-        self.progress_var.set("Completed")
-        messagebox.showinfo("Complete", "Bot has finished processing all URLs")
+        self.progress_var.set("Concluído")
+        messagebox.showinfo("Concluído", "O bot terminou de processar todas as URLs")
     
     def handle_error(self, error_msg):
         """Handle bot errors"""
         self.running = False
         self.start_btn.config(state=tk.NORMAL)
         self.stop_btn.config(state=tk.DISABLED)
-        self.progress_var.set("Error")
-        messagebox.showerror("Error", f"Bot encountered an error: {error_msg}")
+        self.progress_var.set("Erro")
+        messagebox.showerror("Erro", f"O bot encontrou um erro: {error_msg}")
     
     def stop_bot(self):
         """Stop the bot process"""
-        if messagebox.askyesno("Confirm", "Are you sure you want to stop the bot?"):
-            self.log("Stopping bot...")
+        if messagebox.askyesno("Confirmar", "Tem certeza de que deseja parar o bot?"):
+            self.log("Parando bot...")
             self.running = False
             self.stop_btn.config(state=tk.DISABLED)
 

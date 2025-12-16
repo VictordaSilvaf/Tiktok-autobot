@@ -25,6 +25,43 @@ import re
 # Initialize colorama
 init()
 
+PROXY_RAW = []
+
+COMMENTS = [
+    "🔥 This is amazing!",
+    "😂 Can't stop laughing!",
+    "👏 Great content!",
+    "💯 So relatable!",
+    "❤️ Love this!",
+    "🙌 Perfect timing!",
+    "😍 Absolutely stunning!",
+    "🤩 Mind blown!",
+    "👌 Quality content!",
+    "🎯 Hit different!"
+]
+
+from seleniumbase import BaseCase as SB # Define SB
+from faker import Faker
+fake = Faker() # Define fake
+
+def extract_and_save_cookies(sb_driver, cookies_path: Path):
+        try:
+            # Verifica se o driver é uma instância BaseCase (SB)
+            if hasattr(sb_driver, 'driver'):
+                driver = sb_driver.driver
+            else:
+                driver = sb_driver
+                
+            cookies = driver.get_cookies()
+            
+            # O código da GUI passa um objeto Path, por isso usamos str()
+            with open(str(cookies_path), 'w', encoding='utf-8') as f:
+                json.dump(cookies, f, indent=4)
+            return True
+        except Exception as e:
+            print(f"Erro ao salvar cookies: {e}")
+            return False
+
 class TikTokBot:
     def __init__(self):
         self.setup_driver()
@@ -35,18 +72,7 @@ class TikTokBot:
         self.share_count = 0
         
         # Preset comments
-        self.comments = [
-            "🔥 This is amazing!",
-            "😂 Can't stop laughing!",
-            "👏 Great content!",
-            "💯 So relatable!",
-            "❤️ Love this!",
-            "🙌 Perfect timing!",
-            "😍 Absolutely stunning!",
-            "🤩 Mind blown!",
-            "👌 Quality content!",
-            "🎯 Hit different!"
-        ]
+        self.comments = COMMENTS
         
         # Updated TikTok XPaths for current structure
         self.xpaths = {

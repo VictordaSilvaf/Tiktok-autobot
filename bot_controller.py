@@ -10,9 +10,10 @@ import threading
 import tkinter as tk
 from tkinter import ttk, messagebox, scrolledtext, filedialog
 from pathlib import Path
+from seleniumbase import Driver as SB
 
 # Import our bot functionality
-from test import PROXY_RAW, TikTokBot, extract_and_save_cookies, SB, fake
+from test import PROXY_RAW, TikTokBot, extract_and_save_cookies, fake
 from test import COMMENTS
 
 class TikTokBotGUI:
@@ -21,6 +22,7 @@ class TikTokBotGUI:
         self.root.title("Bot de Automação TikTok")
         self.root.geometry("850x750")
         self.root.minsize(850, 750)
+        self.root.maxsize(950, 850)
         
         # Set style
         self.style = ttk.Style()
@@ -292,49 +294,67 @@ class TikTokBotGUI:
         self.url_text.delete(1.0, tk.END)
     
     def extract_cookies(self):
-        """Extract cookies from TikTok in a new browser session"""
+        """Extrai cookies do TikTok após login manual - Usa extract_and_save_cookies corretamente"""
         def extract_thread():
             try:
                 self.log("Abrindo navegador para extrair cookies...")
+                
                 with SB(
                     uc=True,
                     incognito=False,
                     agent=fake.chrome(),
                     headless=False,
+                    locale_code="pt-BR",  # Site em português
                 ) as sb:
-                    sb.open("https://www.tiktok.com/login")
-                    self.log("Faça login no TikTok manualmente...")
-                    self.log("A janela se fechará automaticamente após login bem-sucedido")
                     
-                    # Wait for manual login
-                    max_wait = 120  # 2 minutes
+                    sb.open("https://www.tiktok.com/login/phone-or-email/email")
+                    self.log("🔑 Faça login no TikTok manualmente (e-mail, Google, etc.)")
+                    self.log("⏳ O bot aguardará até detectar o login automaticamente.")
+                    
+                    # Espera até detectar login (máximo 5 minutos)
+                    max_wait = 300
                     start_time = time.time()
                     logged_in = False
                     
                     while time.time() - start_time < max_wait:
-                        # Check login status every 3 seconds
-                        if sb.is_element_visible("//div[@data-e2e='top-avatar']") or \
-                           sb.is_element_visible("//div[contains(text(),'Upload')]"):
-                            logged_in = True
-                            break
+                        try:
+                            current_url = sb.get_current_url()
+                            if (sb.is_element_visible("//div[@data-e2e='top-avatar']") or
+                                sb.is_element_visible("//button//span[contains(text(), 'Upload') or contains(text(), 'Carregar')]") or
+                                sb.is_element_present("//div[@data-e2e='browse-upload']") or
+                                "@" in current_url):
+                                logged_in = True
+                                break
+                        except:
+                            pass
                         time.sleep(3)
                     
-                    if logged_in:
-                        self.log("Login detectado! Extraindo cookies...")
-                        success = extract_and_save_cookies(sb, self.cookies_path)
-                        if success:
-                            self.log(f"✅ Cookies salvos em {self.cookies_path}")
-                        else:
-                            self.log("❌ Falha ao salvar cookies")
+                    if not logged_in:
+                        self.log("⚠️ Tempo esgotado: login não detectado")
+                        messagebox.showwarning("Aviso", "Login não foi detectado. Clique novamente em 'Extrair Novos Cookies' após logar.")
+                        return
+                    
+                    self.log("✅ Login detectado! Extraindo e salvando cookies...")
+                    
+                    # === USA SUA FUNÇÃO ORIGINAL AQUI (agora dentro do 'with', antes do quit) ===
+                    success = extract_and_save_cookies(sb, self.cookies_path)
+                    
+                    if success:
+                        self.log(f"✅ Cookies salvos com sucesso em:\n{self.cookies_path}")
+                        messagebox.showinfo("Sucesso!", f"Cookies salvos!\n\nLocal:\n{self.cookies_path}")
                     else:
-                        self.log("⚠️ Tempo limite de login excedido ou login não detectado")
-            
+                        self.log("❌ Falha ao salvar cookies (veja o erro no console)")
+                        messagebox.showerror("Erro", "Falha ao salvar os cookies. Veja o console para detalhes.")
+                
+                # Fora do 'with': navegador fechado automaticamente
+                self.log("🌐 Navegador fechado com segurança.")
+                
             except Exception as e:
-                self.log(f"❌ Erro ao extrair cookies: {e}")
+                self.log(f"❌ Erro inesperado durante extração: {e}")
+                messagebox.showerror("Erro", str(e))
         
-        # Run in thread to prevent UI freeze
-        thread = threading.Thread(target=extract_thread)
-        thread.daemon = True
+        # Executa em thread para não travar a GUI
+        thread = threading.Thread(target=extract_thread, daemon=True)
         thread.start()
     
     def fix_cookies(self):
@@ -621,22 +641,8 @@ class TikTokBotGUI:
         self.thread.start()
     
     def bot_thread(self, urls):
-        """Execute bot in separate thread"""
-        
-        # ----------------------------------------------------
-        # ATENÇÃO: A CLASSE TikTokBot DEVE SER IMPORTADA NO TOPO 
-        # (Linha 14, por exemplo) do bot_controller.py
-        # from test import TikTokBot 
-        # ----------------------------------------------------
-        
-        # 1. Cria a instância do bot FORA do bloco try/except principal
         try:
-            # Pega as configurações de comentários da GUI (se a GUI tiver o campo)
-            # Assumindo 0 como padrão se não houver campo na GUI
             comments_to_like_count = 0 
-            
-            # Cria a instância do bot.
-            # Ele vai configurar o driver e carregar as listas iniciais.
             bot_instance = TikTokBot(comments_to_like=comments_to_like_count) 
             
         except Exception as e:
@@ -652,10 +658,6 @@ class TikTokBotGUI:
             # O batc_size deve ser calculado em start_bot, mas mantemos aqui por consistência
             batch_size = min(5, len(urls))
             
-            # Garante que o bot utilize os comentários e proxies da GUI (se necessário)
-            # Este é o lugar onde você atualizaria as propriedades internas do bot_instance
-            # bot_instance.comments = [seus_comentários_da_gui] 
-            
             while remaining and self.running:
                 batch = remaining[:batch_size]
                 
@@ -663,11 +665,6 @@ class TikTokBotGUI:
                 self.log(f"Processando lote de {len(batch)} URLs...")
                 
                 try:
-                    # CORREÇÃO CRÍTICA: Chama o método run_bot da instância do bot
-                    # run_bot espera uma lista de URLs. 
-                    # O run_bot do seu código fecha o driver ao final da lista!
-                    
-                    # Chamando o método run_bot do seu test.py
                     bot_instance.run_bot(batch, str(self.cookies_path))
                     
                 except Exception as e:

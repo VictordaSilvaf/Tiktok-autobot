@@ -82,25 +82,38 @@ COMMENTS = [
 
 from seleniumbase import BaseCase as SB # Define SB
 from faker import Faker
+from selenium.webdriver.remote.webdriver import WebDriver
+import logging
+
 fake = Faker() # Define fake
 
-def extract_and_save_cookies(sb_driver, cookies_path: Path):
-        try:
-            # Verifica se o driver é uma instância BaseCase (SB)
-            if hasattr(sb_driver, 'driver'):
-                driver = sb_driver.driver
-            else:
-                driver = sb_driver
-                
-            cookies = driver.get_cookies()
-            
-            # O código da GUI passa um objeto Path, por isso usamos str()
-            with open(str(cookies_path), 'w', encoding='utf-8') as f:
-                json.dump(cookies, f, indent=4)
-            return True
-        except Exception as e:
-            print(f"Erro ao salvar cookies: {e}")
-            return False
+logger = logging.getLogger(__name__)
+
+def extract_and_save_cookies(sb_driver, cookies_path: Path) -> bool:
+    try:
+        # Resolve driver real
+        driver: WebDriver = (
+            sb_driver.driver
+            if hasattr(sb_driver, "driver")
+            else sb_driver
+        )
+
+        if not hasattr(driver, "get_cookies"):
+            raise TypeError("Objeto fornecido não é um WebDriver válido")
+
+        cookies = driver.get_cookies()
+
+        # Garante que o diretório existe
+        cookies_path.parent.mkdir(parents=True, exist_ok=True)
+
+        with cookies_path.open("w", encoding="utf-8") as f:
+            json.dump(cookies, f, indent=4, ensure_ascii=False)
+
+        return True
+
+    except Exception as e:
+        logger.exception("Erro ao salvar cookies")
+        return False
 
 class TikTokBot:
     def __init__(self, comments_to_like: int = 0):
